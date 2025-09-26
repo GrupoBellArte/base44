@@ -1,15 +1,8 @@
 {
   "name": "mcp-base44",
   "version": "1.0.0",
-  "main": "server.js",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "main": "server.cjs",
+  "scripts": { "start": "node server.cjs" },
+  "dependencies": { "express": "^4.19.2" },
+  "engines": { "node": ">=18" }
 }
