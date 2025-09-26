@@ -10,9 +10,40 @@ const MCP_MANIFEST = {
   name: "base44",
   version: "1.0.0",
   tools: [
-    { name: "list_clients", description: "Lista todos os clientes", input_schema: {} },
-    { name: "get_client", description: "Busca um cliente pelo ID", input_schema: { id: "string" } },
-    { name: "update_client", description: "Atualiza dados de um cliente", input_schema: { id: "string", data: "object" } }
+    {
+      name: "list_clients",
+      description: "Lista todos os clientes",
+      input_schema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false
+      }
+    },
+    {
+      name: "get_client",
+      description: "Busca um cliente pelo ID",
+      input_schema: {
+        type: "object",
+        properties: {
+          id: { type: "string", minLength: 1 }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "update_client",
+      description: "Atualiza dados de um cliente",
+      input_schema: {
+        type: "object",
+        properties: {
+          id: { type: "string", minLength: 1 },
+          data: { type: "object" }
+        },
+        required: ["id", "data"],
+        additionalProperties: false
+      }
+    }
   ]
 };
 
@@ -96,3 +127,4 @@ app.post("/mcp/call", async (req, res) => {
 // ========================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("🚀 MCP rodando na porta " + PORT));
+
