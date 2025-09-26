@@ -1,9 +1,10 @@
-// server.cjs (CommonJS)
+// server.cjs
 const express = require("express");
+const { fetch } = require("undici"); // garante fetch em qualquer runtime
 const app = express();
 app.use(express.json());
 
-const API_KEY = process.env.API_KEY; // setada no Render
+const API_KEY = process.env.API_KEY; // definida no Render
 const BASE44_API = "https://app.base44.com/api/apps/680d6ca95153f09fa29b4f1a/entities/Client";
 
 // --- rotas básicas ---
@@ -21,7 +22,7 @@ const normalize = (r) => ({
   raw: r
 });
 
-// --- rotas REST existentes ---
+// --- rotas REST para sua API ---
 app.get("/clients", async (_, res) => {
   try {
     if (!API_KEY) return res.status(500).json({ ok: false, error: "API_KEY ausente" });
@@ -57,60 +58,31 @@ app.put("/clients/:id", async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// --- MCP: manifesto e execução ---
-// Manifesto MCP que o ChatGPT lê via SSE
+// --- Manifesto MCP + SSE ---
 const MCP_MANIFEST = {
   name: "base44",
   version: "1.0.0",
   tools: [
-    {
-      name: "list_clients",
-      description: "Lista clientes do sistema Base44",
-      input_schema: { type: "object", properties: {} }
-    },
-    {
-      name: "get_client",
-      description: "Busca um cliente por ID",
-      input_schema: {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"]
-      }
-    },
-    {
-      name: "update_client",
-      description: "Atualiza um cliente por ID",
-      input_schema: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          data: { type: "object" }
-        },
-        required: ["id","data"]
-      }
-    }
+    { name: "list_clients", description: "Lista clientes do sistema Base44", input_schema: { type: "object", properties: {} } },
+    { name: "get_client", description: "Busca um cliente por ID", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+    { name: "update_client", description: "Atualiza um cliente por ID", input_schema: { type: "object", properties: { id: { type: "string" }, data: { type: "object" } }, required: ["id","data"] } }
   ]
 };
 
-// Endpoint SSE que publica o manifesto (URL a ser usada no ChatGPT)
 app.get("/sse", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-
-  // envia o manifesto
   res.write(`event: manifest\n`);
   res.write(`data: ${JSON.stringify(MCP_MANIFEST)}\n\n`);
-
-  // keep-alive
-  const interval = setInterval(() => {
-    res.write(`event: ping\ndata: {}\n\n`);
-  }, 25000);
-
+  const interval = setInterval(() => res.write(`event: ping\ndata: {}\n\n`), 25000);
   req.on("close", () => clearInterval(interval));
 });
 
-// Endpoint para o ChatGPT invocar as tools do manifesto
+// útil para testar manifesto sem stream
+app.get("/manifest", (_, res) => res.json(MCP_MANIFEST));
+
+// executor das tools
 app.post("/mcp/call", async (req, res) => {
   try {
     const { tool, args = {} } = req.body || {};
@@ -121,7 +93,6 @@ app.post("/mcp/call", async (req, res) => {
       const j = await r.json();
       return res.json({ ok: true, result: j.data });
     }
-
     if (tool === "get_client") {
       const { id } = args;
       if (!id) return res.status(400).json({ ok: false, error: "id é obrigatório" });
@@ -129,7 +100,6 @@ app.post("/mcp/call", async (req, res) => {
       const j = await r.json();
       return res.json({ ok: true, result: j.data });
     }
-
     if (tool === "update_client") {
       const { id, data } = args;
       if (!id || !data) return res.status(400).json({ ok: false, error: "id e data são obrigatórios" });
@@ -143,9 +113,7 @@ app.post("/mcp/call", async (req, res) => {
     }
 
     return res.status(404).json({ ok: false, error: `tool '${tool}' não encontrada` });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 const PORT = process.env.PORT || 3000;
