@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "server.cjs",
   "scripts": { "start": "node server.cjs" },
-  "dependencies": { "express": "^4.19.2" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "undici": "^6.19.8"
+  },
   "engines": { "node": ">=18" }
 }
